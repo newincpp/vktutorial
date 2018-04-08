@@ -5,8 +5,8 @@ extern "C" {
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#define WIDTH 800
-#define HEIGHT 900
+#define WIDTH 960
+#define HEIGHT 512
 GLFWwindow* window;
 
 void initWindow() {
@@ -48,15 +48,20 @@ void pickGPU(VkInstance& instance, VkDevice& logicgpu) {
 	VkPhysicalDeviceFeatures deviceFeatures;
 	VkPhysicalDeviceProperties deviceProperties;
 	int graphicsQueueIndex = 0;
+	puts("checking physical devices");
 	for (VkPhysicalDevice& device : devices) {
 		vkGetPhysicalDeviceProperties(device, &deviceProperties);
 		vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
-		if (deviceFeatures.robustBufferAccess && deviceFeatures.tessellationShader) {
-			if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-				printf("choosing: %s\n", deviceProperties.deviceName);
-				physicalDevice = device;
-			} 
-			// most likely to be useless if "VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU" is true
+
+		if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+			if (!deviceFeatures.robustBufferAccess) {
+				puts("Warning: the device has no rebust access");
+			}
+			printf("choosing: %s\n", deviceProperties.deviceName);
+			physicalDevice = device;
+			break; // for now let's say that any discrete gpu is cool... later it will be super cool if keep everyone and just distribute some task to a gpu and some other to another...
+		} else {
+			// trying to get a working device that is less powerfull but if it can display stuff that's fine...
 			uint32_t queueFamilyCount = 0;
 			vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 			VkQueueFamilyProperties queueFamilies[queueFamilyCount];
@@ -71,8 +76,7 @@ void pickGPU(VkInstance& instance, VkDevice& logicgpu) {
 			}
 		}
 	}
-
-
+	puts("got one");
 
 	VkDeviceQueueCreateInfo queueCreateInfo = {};
 	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -94,9 +98,24 @@ void pickGPU(VkInstance& instance, VkDevice& logicgpu) {
 		nullptr,                              //const char* const*                 ppEnabledExtensionNames;
 		&deviceFeatures                       //const VkPhysicalDeviceFeatures*    pEnabledFeatures;
 	};
+	puts("before calling Create Device");
 	if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &logicgpu) != VK_SUCCESS) {
 		puts("this sounds bad =(");
 	}
+}
+
+void initSurface(VkInstance& instance, VkSurfaceKHR* surface) {
+#if defined(OS_WINDOWS)
+    VkWin32SurfaceCreateInfoKHR createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+    createInfo.hwnd = glfwGetWin32Window(window);
+#elif defined(OS_LINUX)
+    VkWin32SurfaceCreateInfoKHR createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+    createInfo.hwnd = glfwGetWin32Window(window);
+#elif defined(VK_USE_PLATFORM_MACOS_MVK)
+    glfwCreateWindowSurface(instance, window, nullptr, surface);
+#endif
 }
 
 void initVK() {
@@ -156,14 +175,15 @@ void initVK() {
 	}
 	extentionSupport();
 	pickGPU(instance, logicgpu);
+    
+    VkSurfaceKHR surface;
+    initSurface(instance, &surface);
 }
 
 void run() {
-	puts("brun");
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 	}
-	puts("erun");
 }
 
 int main() {
