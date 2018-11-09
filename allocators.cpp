@@ -2,8 +2,12 @@
 #include <stdlib.h>
 #include "allocators.h"
 
+#ifdef _WIN32
+#include <malloc.h>
+#endif
+
 // eastl allocator
-void* operator new[](unsigned long size, char const* pname, int flags, unsigned int debugflags, char const* file,  int line) {
+void* operator new[](size_t size, char const* pname, int flags, unsigned int debugflags, char const* file,  int line) {
     // TODO: handle debug draw and memory consuption
     // TODO: CPU/GPU shared memory and syncronisation using `int flags` ?
     #ifdef DEBUG
@@ -26,13 +30,17 @@ void* aligned_alloc(size_t alignment_, size_t size_) {
 #endif
         
 // eastl aligned allocator
-void* operator new[](unsigned long size, unsigned long alignment, unsigned long alignmentOffset, char const* pname, int flags, unsigned int debugFlags, char const* file, int line) {
+void* operator new[](size_t size, size_t alignment, size_t alignmentOffset, char const* pname, int flags, unsigned int debugFlags, char const* file, int line) {
 #ifdef DEBUG
     if (pname && file && line) {
 	    std::cout << "aligned allocation: " << pname << " " << file << " " << line << '\n';
     }
 #endif
+#ifdef _WIN32
+	return _aligned_offset_malloc(size, alignment, alignmentOffset);
+#else
     return aligned_alloc(alignment, size);
+#endif
 }
 
 //TODO vulkan allocator compatible with eastl allocator
