@@ -28,9 +28,8 @@ layout(binding = 0) uniform UniformBufferObject {
     mat4 model;
     mat4 view;
     mat4 proj;
-    float time;
-    vec3 debugcolour;
     SH2 envIrradiance;
+    float time;
 } glslDecl(ubo) ;
 
 #include "glslCompatUndef.h"
